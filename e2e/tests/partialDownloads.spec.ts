@@ -96,8 +96,10 @@ test("Partial downloads: Should offer a retry on a partially completed item", as
     saveCalled = true;
     await route.fulfill({ status: 201 });
   });
+  // Must return a JSON body: queryExpressJS calls response.json() on a 200,
+  // and a rejected parse would abort retryItem before it reaches /save
   await page.route("**/remove", async (route) => {
-    await route.fulfill({ status: 200 });
+    await route.fulfill({ status: 200, json: {} });
   });
 
   await retryButton.click();
