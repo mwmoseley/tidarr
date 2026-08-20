@@ -49,6 +49,14 @@ async function openProcessingList(page: Page) {
   });
 }
 
+/**
+ * Terminal items are grouped into the finished list, which is collapsed by
+ * default behind a "Show finished (n)" toggle.
+ */
+async function showFinishedList(page: Page) {
+  await page.getByRole("button", { name: /Show finished/i }).click();
+}
+
 test("Partial downloads: Should list a partially completed item as done", async ({
   page,
 }) => {
@@ -61,6 +69,12 @@ test("Partial downloads: Should list a partially completed item as done", async 
   // completed item must not leave the queue looking stuck at 1/2
   await expect(page.locator("button.MuiFab-circular")).toContainText("2/2");
 
+  // ... and both belong to the finished group, not the active queue
+  await expect(
+    page.getByRole("button", { name: "Show finished (2)" }),
+  ).toBeVisible();
+
+  await showFinishedList(page);
   await expect(page.getByRole("main")).toContainText("Nevermind");
 });
 
@@ -71,6 +85,7 @@ test("Partial downloads: Should offer a retry on a partially completed item", as
   await mockProcessingSSE(page, [partialItem]);
 
   await openProcessingList(page);
+  await showFinishedList(page);
 
   // Retry is offered for partial items, same as for failed ones
   const retryButton = page.getByRole("button", { name: "Retry" });
