@@ -1,5 +1,8 @@
 # Dependencies
-node_modules
+# Bare "node_modules" only matches the root copy - workspace copies
+# (api/, app/, e2e/) must be matched explicitly or they land in the build
+# context, which breaks the build on Windows (unreadable yarn .bin shims).
+**/node_modules
 .pnpm-store
 .yarn
 .npm
