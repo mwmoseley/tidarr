@@ -32,6 +32,7 @@ const STATUS_ICONS: Record<string, React.ReactNode> = {
   queue_download: <AccessTimeIcon />,
   queue_processing: <AccessTimeIcon />,
   error: <WarningIcon color="error" />,
+  completed_with_errors: <WarningIcon color="warning" />,
   finished: <CheckIcon color="success" />,
   download: <CircularProgress size={18} />,
   processing: <CoffeeMakerIcon />,
@@ -125,7 +126,7 @@ export const DownloadButton = ({
     ? "error"
     : status === "finished"
       ? "success"
-      : status === "error"
+      : status === "error" || status === "completed_with_errors"
         ? "warning"
         : isCancellable
           ? "inherit"
@@ -137,8 +138,14 @@ export const DownloadButton = ({
     (status && STATUS_ICONS[status]) || <DownloadIcon />
   );
 
+  const tooltip = showCancelMode
+    ? "Click to cancel download"
+    : status === "completed_with_errors"
+      ? "Completed with errors - some tracks could not be downloaded"
+      : "";
+
   return (
-    <Tooltip title={showCancelMode ? "Click to cancel download" : ""}>
+    <Tooltip title={tooltip}>
       <Button
         variant="outlined"
         data-testid="btn-dl"

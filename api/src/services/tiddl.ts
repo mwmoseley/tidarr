@@ -94,6 +94,7 @@ export function tidalDL(id: string, app: Express, onFinish?: () => void) {
   let lastTotalProgress = "";
   let hasProcessingError = false;
   let hasNetworkError = false;
+  let errorCount = 0;
   let lastProgressUpdate = 0;
 
   child.stdout?.on("data", (data: string) => {
@@ -114,6 +115,7 @@ export function tidalDL(id: string, app: Express, onFinish?: () => void) {
     );
     if (errorLines.length > 0) {
       hasProcessingError = true;
+      errorCount += errorLines.length;
       if (
         lines.some(
           (line) =>
@@ -195,6 +197,8 @@ export function tidalDL(id: string, app: Express, onFinish?: () => void) {
     item["status"] = hasProcessingError ? "error" : item["status"];
     item["loading"] = false;
     item["networkError"] = hasNetworkError;
+    // Keep a count so a partially downloaded item can report how much failed
+    item["partialErrors"] = hasProcessingError ? Math.max(errorCount, 1) : 0;
     app.locals.processingStack.actions.updateItem(item);
 
     if (onFinish) onFinish();
@@ -204,6 +208,7 @@ export function tidalDL(id: string, app: Express, onFinish?: () => void) {
   child.stderr?.on("data", (data) => {
     logs(item.id, `❌ [TIDDL]: ${data}`);
     hasProcessingError = true;
+    errorCount += 1;
   });
 
   child.on("error", (err) => {

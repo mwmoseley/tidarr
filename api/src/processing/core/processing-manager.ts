@@ -241,7 +241,7 @@ export const ProcessingStack = () => {
 
   async function removeFinishedItems() {
     const itemsToRemove = data.filter((item) =>
-      ["finished", "error"].includes(item.status),
+      ["finished", "completed_with_errors", "error"].includes(item.status),
     );
     const removeIds = new Set(itemsToRemove.map((item) => item.id));
     for (const item of itemsToRemove) {
@@ -275,9 +275,17 @@ export const ProcessingStack = () => {
   }
 
   function updateItem(item: ProcessingItemType) {
-    if (item?.status === "finished" || item?.status === "error") {
-      // Add item to history (if enabled)
-      addItemToHistory(item.id);
+    if (
+      item?.status === "finished" ||
+      item?.status === "completed_with_errors" ||
+      item?.status === "error"
+    ) {
+      // Add item to history (if enabled). Partially completed downloads are
+      // deliberately excluded: the release is incomplete, so it stays eligible
+      // for a future download instead of counting as already grabbed.
+      if (item.status !== "completed_with_errors") {
+        addItemToHistory(item.id);
+      }
 
       queueManager.processQueue();
     }
@@ -300,7 +308,12 @@ export const ProcessingStack = () => {
 
     if (
       !item ||
-      !["queue_download", "error", "finished"].includes(item.status)
+      ![
+        "queue_download",
+        "error",
+        "finished",
+        "completed_with_errors",
+      ].includes(item.status)
     ) {
       throw new Error(`Item ${id} cannot be individually downloaded`);
     }

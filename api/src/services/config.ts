@@ -53,6 +53,7 @@ export async function configureServer() {
       ARTIST_SINGLE_DOWNLOAD: process.env.ARTIST_SINGLE_DOWNLOAD || "",
       DOWNLOAD_BATCH_SIZE: process.env.DOWNLOAD_BATCH_SIZE || "",
       DOWNLOAD_BATCH_DELAY: process.env.DOWNLOAD_BATCH_DELAY || "",
+      ALLOW_PARTIAL_DOWNLOADS: process.env.ALLOW_PARTIAL_DOWNLOADS || "",
     },
   };
 }

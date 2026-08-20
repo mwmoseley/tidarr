@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useProcessingProvider } from "src/provider/ProcessingProvider";
+import { isDownloadDone } from "src/utils/helpers";
 
 /**
  * Component that updates the browser tab title with processing count
@@ -14,8 +15,8 @@ export function DocumentTitle() {
     }
 
     // Count finished items
-    const finishedCount = processingList.filter(
-      (item) => item.status === "finished",
+    const finishedCount = processingList.filter((item) =>
+      isDownloadDone(item.status),
     ).length;
     const totalCount = processingList.length;
 

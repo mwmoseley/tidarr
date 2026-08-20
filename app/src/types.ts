@@ -369,10 +369,12 @@ export type ProcessingItemType = {
     | "queue_processing"
     | "processing"
     | "finished"
+    | "completed_with_errors"
     | "error";
   url: string;
   loading: boolean;
   error: boolean;
+  partialErrors?: number;
   progress?: {
     current: number;
     total: number;

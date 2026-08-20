@@ -63,7 +63,10 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
   const retryItem = async (item: ProcessingItemType): Promise<void | null> => {
     if (
       processingList?.some(
-        (row) => row.id === item.id && row.status !== "error",
+        (row) =>
+          row.id === item.id &&
+          row.status !== "error" &&
+          row.status !== "completed_with_errors",
       )
     )
       return null;
@@ -76,6 +79,7 @@ export function ProcessingProvider({ children }: { children: ReactNode }) {
           status: "queue_download",
           loading: true,
           error: false,
+          partialErrors: 0,
         },
       }),
     );

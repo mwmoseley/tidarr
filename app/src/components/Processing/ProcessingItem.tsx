@@ -25,6 +25,7 @@ import { CircularProgressWithLabel } from "./CircularProgressWithLabel";
 
 const STATUS_ICONS: Record<string, ReactElement> = {
   finished: <CheckIcon color="success" />,
+  completed_with_errors: <WarningIcon color="warning" />,
   error: <WarningIcon color="error" />,
   queue_download: <AccessTimeIcon />,
   queue_processing: <MoreHoriz />,
@@ -52,7 +53,11 @@ export const ProcessingItem = ({ item }: { item: ProcessingItemType }) => {
     }
 
     const icon = STATUS_ICONS[status] ?? <CircularProgress size={24} />;
-    return <Tooltip title={status}>{icon}</Tooltip>;
+    const title =
+      status === "completed_with_errors"
+        ? `Completed with ${item.partialErrors ?? 1} error(s)`
+        : status;
+    return <Tooltip title={title}>{icon}</Tooltip>;
   };
 
   return (
@@ -63,7 +68,7 @@ export const ProcessingItem = ({ item }: { item: ProcessingItemType }) => {
             <ClearIcon />
           </RemoveButton>
           {renderStatusIcon()}
-          {status === "error" && (
+          {(status === "error" || status === "completed_with_errors") && (
             <>
               &nbsp;&nbsp;
               <Button

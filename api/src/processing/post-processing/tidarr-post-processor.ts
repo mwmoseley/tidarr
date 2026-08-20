@@ -133,10 +133,19 @@ export async function postProcessTidarr(
   // Add playlist albums to queue if enabled
   await getPlaylistAlbums(item.id);
 
-  // Mark as finished
+  // Mark as finished — an item that got here with download errors kept its
+  // successful tracks, so report it as completed with errors rather than done
   logs(item.id, "---------------------");
-  logs(item.id, "✅ [TIDARR] Post processing complete.");
-  item["status"] = "finished";
+  if (item["partialErrors"]) {
+    logs(
+      item.id,
+      `⚠️ [TIDARR] Post processing complete, with ${item["partialErrors"]} download error(s).`,
+    );
+    item["status"] = "completed_with_errors";
+  } else {
+    logs(item.id, "✅ [TIDARR] Post processing complete.");
+    item["status"] = "finished";
+  }
 
   // Trigger completion callback
   onComplete();

@@ -85,7 +85,8 @@ export const DialogTerminal = ({ item }: { item: ProcessingItemType }) => {
             >
               {isProcessing ? "Cancel" : "Remove"}
             </Button>
-            {item.status === "error" && (
+            {(item.status === "error" ||
+              item.status === "completed_with_errors") && (
               <Button
                 startIcon={<Replay />}
                 variant="outlined"

@@ -5,6 +5,7 @@ import { CircularProgress, SpeedDial } from "@mui/material";
 import { blue } from "@mui/material/colors";
 import { useConfigProvider } from "src/provider/ConfigProvider";
 import { useProcessingProvider } from "src/provider/ProcessingProvider";
+import { isDownloadDone } from "src/utils/helpers";
 
 export const ProcessingButton = () => {
   const { processingList, isPaused } = useProcessingProvider();
@@ -62,7 +63,7 @@ export const ProcessingButton = () => {
       ) : (
         <strong>
           {
-            processingList?.filter((item) => item?.status === "finished")
+            processingList?.filter((item) => isDownloadDone(item?.status))
               ?.length
           }
           /{processingList?.length || 0}

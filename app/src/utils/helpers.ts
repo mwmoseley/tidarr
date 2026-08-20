@@ -1,3 +1,14 @@
+import { ProcessingItemType } from "../types";
+
+/**
+ * Terminal "the download is over and files were kept" statuses.
+ * "completed_with_errors" counts as done: its successful tracks went through
+ * the full post-processing flow and are in the library.
+ */
+export function isDownloadDone(status: ProcessingItemType["status"]): boolean {
+  return status === "finished" || status === "completed_with_errors";
+}
+
 export function a11yProps(index: number) {
   return {
     id: `full-width-tab-${index}`,

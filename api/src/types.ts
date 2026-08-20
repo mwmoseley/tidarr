@@ -27,6 +27,7 @@ export type ProcessingItemType = {
     | "processing"
     | "queue" // legacy
     | "finished"
+    | "completed_with_errors"
     | "error";
   quality: QualityType;
   atmosFilter?: string; // "none" | "only" | "allow"
@@ -37,6 +38,9 @@ export type ProcessingItemType = {
   retryCount?: number;
   networkError?: boolean;
   skipped?: boolean;
+  // Number of download errors seen for an item that still produced files
+  // (ALLOW_PARTIAL_DOWNLOADS). Persisted so the count survives a restart.
+  partialErrors?: number;
   source?: "lidarr" | "tidarr";
   progress?: {
     current: number;

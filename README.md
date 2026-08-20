@@ -304,6 +304,42 @@ environment:
 > - `DOWNLOAD_BATCH_SIZE` alone: queue auto-pauses after N downloads, resume manually via the UI
 > - Both together: fully automated rate-limited downloading (e.g. 10 albums every hour)
 
+### Allow partially failed downloads
+
+By default, a download that hits any error is discarded: the partially downloaded
+files are deleted and the item is marked as failed.
+
+Set `ALLOW_PARTIAL_DOWNLOADS=true` to keep whatever downloaded successfully:
+
+```yaml
+environment:
+  - ...
+  - ALLOW_PARTIAL_DOWNLOADS=true
+```
+
+When enabled, an item that fails but still produced at least one file goes through
+the **full post-processing flow** (beets, ReplayGain, permissions, custom scripts,
+library move, Plex/Jellyfin/Navidrome scan and notifications) and ends in a
+`completed_with_errors` state, shown as an orange "completed with errors" button.
+The download log records what failed, and the item keeps a Retry button.
+
+Typical cases this covers:
+
+- an album or playlist where a few tracks are Dolby Atmos only and the Atmos filter excludes them
+- tracks that have been removed from Tidal since the album was published
+- individual track download failures or timeouts inside a larger release
+
+> [!NOTE]
+> Network errors are still retried first (up to 3 attempts) — an item is only
+> completed with errors once retries are exhausted. If **nothing** downloaded, the
+> item still fails normally. Lidarr-sourced grabs are unaffected: they continue to
+> report as failed so Lidarr keeps searching for a complete release.
+
+> [!NOTE]
+> Partially completed items are **not** added to the download history
+> (`ENABLE_HISTORY`). The release is incomplete, so it stays eligible for a future
+> download rather than counting as already grabbed.
+
 ### Sync playlists and mixes
 
 Default value is daily sync at **3 am** (`0 3 * * *`).

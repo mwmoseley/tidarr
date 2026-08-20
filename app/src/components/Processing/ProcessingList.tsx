@@ -14,6 +14,7 @@ import { ModuleTitle } from "src/components/TidalModule/Title";
 import { useApiFetcher } from "src/provider/ApiFetcherProvider";
 import { useConfigProvider } from "src/provider/ConfigProvider";
 import { useProcessingProvider } from "src/provider/ProcessingProvider";
+import { isDownloadDone } from "src/utils/helpers";
 
 import BackButton from "../Buttons/BackButton";
 
@@ -53,7 +54,7 @@ export default function ProcessingList() {
     () =>
       processingList?.filter(
         (item) =>
-          item.status !== "finished" &&
+          !isDownloadDone(item.status) &&
           (!keyword ||
             item.title?.toLowerCase().includes(keyword) ||
             item.artist?.toLowerCase().includes(keyword)),
@@ -65,7 +66,7 @@ export default function ProcessingList() {
     () =>
       processingList?.filter(
         (item) =>
-          item.status === "finished" &&
+          isDownloadDone(item.status) &&
           (!keyword ||
             item.title?.toLowerCase().includes(keyword) ||
             item.artist?.toLowerCase().includes(keyword)),

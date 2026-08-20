@@ -119,12 +119,21 @@ export class QueueManager {
           return;
         }
 
-        // Max retries reached, clean up processing folder
-        await cleanFolder(item.id);
+        // Retries exhausted. If partial downloads are allowed and something
+        // actually landed on disk, keep going so the tracks that succeeded get
+        // the full post-processing flow — otherwise drop the partial files.
+        if (!(await this.canCompleteWithErrors(item))) {
+          await cleanFolder(item.id);
 
-        // Trigger next items in queue
-        this.processQueue();
-        return;
+          // Trigger next items in queue
+          this.processQueue();
+          return;
+        }
+
+        logs(
+          item.id,
+          `⚠️ [TIDARR] Download completed with ${item.partialErrors ?? 1} error(s). Post-processing the tracks that succeeded.`,
+        );
       }
 
       // For LIDARR items, go straight to post-processing
@@ -218,6 +227,36 @@ export class QueueManager {
 
     // Trigger next items in queue
     this.processQueue();
+  }
+
+  /**
+   * Checks whether a failed download produced enough to be worth keeping.
+   * Requires ALLOW_PARTIAL_DOWNLOADS and at least one downloaded file.
+   * Lidarr-sourced items are excluded: Lidarr must see a partial grab as
+   * failed so it keeps searching for a complete release.
+   */
+  private async canCompleteWithErrors(
+    item: ProcessingItemType,
+  ): Promise<boolean> {
+    if (process.env.ALLOW_PARTIAL_DOWNLOADS !== "true") {
+      return false;
+    }
+
+    if (item.source === "lidarr") {
+      return false;
+    }
+
+    const hasFile = await hasFileToMove(`${PROCESSING_PATH}/${item.id}`);
+
+    if (!hasFile) {
+      logs(
+        item.id,
+        "⛔ [TIDARR] Nothing was downloaded — cannot complete with errors.",
+      );
+      return false;
+    }
+
+    return true;
   }
 
   /**
