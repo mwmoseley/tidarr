@@ -5,7 +5,7 @@ import path from "path";
 import { CONFIG_PATH, PROCESSING_PATH } from "../../constants";
 import { getAppInstance } from "../helpers/app-instance";
 import { logs } from "../processing/utils/logs";
-import { ProcessingItemType } from "../types";
+import { ContentType, ProcessingItemType } from "../types";
 
 // Extensions tiddl can produce for audio. Anything else (covers, .lrc, .m3u)
 // is ignored when working out what a folder contains.
@@ -17,6 +17,26 @@ const AUDIO_EXTENSIONS = new Set([
   ".opus",
   ".wav",
   ".aac",
+]);
+
+// Content types whose folders are always complete releases, and those whose
+// folders are always fragments. tiddl gives playlist tracks the same
+// "<artist>/<year> - <album>/<NN>. <title>" layout as an album download, so
+// the item type is the only reliable signal - filenames alone cannot tell a
+// one-track playlist pick apart from a genuine single-track release.
+const ALBUM_CONTENT_TYPES = new Set<ContentType>([
+  "album",
+  "artist",
+  "favorite_albums",
+  "favorite_artists",
+]);
+
+const SINGLETON_CONTENT_TYPES = new Set<ContentType>([
+  "track",
+  "playlist",
+  "mix",
+  "favorite_tracks",
+  "favorite_playlists",
 ]);
 
 type ImportPaths = {
@@ -75,6 +95,11 @@ function collectAudioFolders(root: string): Map<string, string[]> {
  * @returns true when the folder should be imported as an album
  */
 function isCompleteAlbum(files: string[]): boolean {
+  // A lone file is a fragment, never a release: a playlist pick that happens
+  // to be track 1 of its album would otherwise pass the contiguity check below
+  // and get tagged with the whole release it was lifted from.
+  if (files.length < 2) return false;
+
   const numbers: number[] = [];
 
   for (const file of files) {
@@ -94,15 +119,37 @@ function isCompleteAlbum(files: string[]): boolean {
 }
 
 /**
+ * Decides how a single downloaded folder should be imported.
+ *
+ * The content type settles it outright for everything a user can queue; the
+ * filename heuristic is only a fallback for types that produce a mix of both
+ * (or for a type added later that is not listed above).
+ *
+ * @param type - Content type of the queued item
+ * @param files - Audio filenames in the folder
+ * @returns true when the folder should be imported as an album
+ */
+function isAlbumFolder(type: ContentType, files: string[]): boolean {
+  if (SINGLETON_CONTENT_TYPES.has(type)) return false;
+  if (ALBUM_CONTENT_TYPES.has(type)) return true;
+
+  return isCompleteAlbum(files);
+}
+
+/**
  * Splits an item's downloaded folders into album imports and singleton imports
  * @param root - The item's processing folder
+ * @param type - Content type of the queued item
  */
-export function classifyImportPaths(root: string): ImportPaths {
+export function classifyImportPaths(
+  root: string,
+  type: ContentType,
+): ImportPaths {
   const albums: string[] = [];
   const singletons: string[] = [];
 
   for (const [folder, files] of collectAudioFolders(root)) {
-    if (isCompleteAlbum(files)) {
+    if (isAlbumFolder(type, files)) {
       albums.push(folder);
     } else {
       singletons.push(folder);
@@ -179,7 +226,10 @@ export async function beets(id: string): Promise<void> {
 
       // Import complete albums and loose tracks separately: matching a
       // playlist fragment against a full release produces bad tags
-      const { albums, singletons } = classifyImportPaths(itemProcessingPath);
+      const { albums, singletons } = classifyImportPaths(
+        itemProcessingPath,
+        item.type,
+      );
 
       if (albums.length === 0 && singletons.length === 0) {
         // Nothing recognisable - let beets walk the folder itself
