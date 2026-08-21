@@ -1,9 +1,116 @@
 import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
 
 import { CONFIG_PATH, PROCESSING_PATH } from "../../constants";
 import { getAppInstance } from "../helpers/app-instance";
 import { logs } from "../processing/utils/logs";
 import { ProcessingItemType } from "../types";
+
+// Extensions tiddl can produce for audio. Anything else (covers, .lrc, .m3u)
+// is ignored when working out what a folder contains.
+const AUDIO_EXTENSIONS = new Set([
+  ".flac",
+  ".m4a",
+  ".mp3",
+  ".ogg",
+  ".opus",
+  ".wav",
+  ".aac",
+]);
+
+type ImportPaths = {
+  albums: string[];
+  singletons: string[];
+};
+
+/**
+ * Collects every folder under a path that directly contains audio files.
+ * @param root - Folder to walk
+ * @returns Map of folder path to the audio filenames it holds
+ */
+function collectAudioFolders(root: string): Map<string, string[]> {
+  const folders = new Map<string, string[]>();
+
+  const walk = (dir: string) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const audioFiles: string[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        walk(path.join(dir, entry.name));
+      } else if (AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        audioFiles.push(entry.name);
+      }
+    }
+
+    if (audioFiles.length > 0) {
+      folders.set(dir, audioFiles);
+    }
+  };
+
+  walk(root);
+
+  return folders;
+}
+
+/**
+ * Decides whether a folder holds a complete album or loose tracks.
+ *
+ * tiddl names files with a leading track number ("07. Polly"), so a folder
+ * whose numbers run contiguously from 1 is a full album, while a sparse set
+ * ("07." on its own) is a fragment pulled out of an album by a playlist or
+ * mix download and should be tagged as singletons instead.
+ *
+ * Repeated numbers mean a multi-disc release (per_disc_numbering restarts the
+ * count on each disc), which is still an album.
+ *
+ * @param files - Audio filenames in the folder
+ * @returns true when the folder should be imported as an album
+ */
+function isCompleteAlbum(files: string[]): boolean {
+  const numbers: number[] = [];
+
+  for (const file of files) {
+    const match = file.match(/^(\d+)[.\s-]/);
+    // Template has no track number - fall back to album mode (previous behaviour)
+    if (!match) return true;
+    numbers.push(parseInt(match[1], 10));
+  }
+
+  const unique = new Set(numbers);
+  // Multi-disc: numbering restarts per disc
+  if (unique.size !== numbers.length) return true;
+
+  const sorted = [...numbers].sort((a, b) => a - b);
+
+  return sorted[0] === 1 && sorted[sorted.length - 1] === sorted.length;
+}
+
+/**
+ * Splits an item's downloaded folders into album imports and singleton imports
+ * @param root - The item's processing folder
+ */
+export function classifyImportPaths(root: string): ImportPaths {
+  const albums: string[] = [];
+  const singletons: string[] = [];
+
+  for (const [folder, files] of collectAudioFolders(root)) {
+    if (isCompleteAlbum(files)) {
+      albums.push(folder);
+    } else {
+      singletons.push(folder);
+    }
+  }
+
+  return { albums, singletons };
+}
 
 function spawnBeet(
   itemId: string,
@@ -70,7 +177,30 @@ export async function beets(id: string): Promise<void> {
       console.log("🎧 BEETS             ");
       console.log("--------------------");
 
-      await spawnBeet(item.id, "import", ["-qC", itemProcessingPath]);
+      // Import complete albums and loose tracks separately: matching a
+      // playlist fragment against a full release produces bad tags
+      const { albums, singletons } = classifyImportPaths(itemProcessingPath);
+
+      if (albums.length === 0 && singletons.length === 0) {
+        // Nothing recognisable - let beets walk the folder itself
+        await spawnBeet(item.id, "import", ["-qC", itemProcessingPath]);
+      } else {
+        if (albums.length > 0) {
+          logs(item.id, `🎧 [BEETS] Importing ${albums.length} album(s)`, {
+            skipConsole: true,
+          });
+          await spawnBeet(item.id, "import", ["-qC", ...albums]);
+        }
+
+        if (singletons.length > 0) {
+          logs(
+            item.id,
+            `🎧 [BEETS] Importing ${singletons.length} folder(s) as singletons`,
+            { skipConsole: true },
+          );
+          await spawnBeet(item.id, "import", ["-qC", "-s", ...singletons]);
+        }
+      }
 
       // Run beet write after import
       logs(item.id, "🕖 [BEETS] Writing tags ...", { skipConsole: true });

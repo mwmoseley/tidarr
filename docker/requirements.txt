@@ -1,5 +1,5 @@
 pylast==7.1.0
 
-beets[fetchart, lastgenre, lastimport, advancedrewrite]==2.5.1
+beets[fetchart, lastgenre, lastimport, advancedrewrite, chroma]==2.5.1
 
 tiddl==3.4.4

@@ -17,6 +17,7 @@ RUN apk update && apk upgrade && \
     apk add --no-cache \
         npm nodejs \
         ffmpeg \
+        chromaprint \
         bash \
         su-exec \
         curl \
