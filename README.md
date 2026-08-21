@@ -411,6 +411,21 @@ environment:
 
 Beets options in `</mounted/config/folder/>beets-config.yml`:
 
+#### Discogs
+
+Discogs carries curated `genre` and `style` data that MusicBrainz often lacks. Set a
+[personal access token](https://www.discogs.com/settings/developers) to enable it:
+
+```yaml
+environment:
+  - ...
+  - DISCOGS_TOKEN=your_token_here
+```
+
+The token is injected into a private copy of the config at run time, so it never has to be
+written into `beets-config.yml`. If that file already declares its own `discogs:` block, it is
+left alone and `DISCOGS_TOKEN` is ignored.
+
 > [!NOTE]
 > Beets is locked to version **2.5.1**
 >

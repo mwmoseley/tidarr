@@ -4,6 +4,7 @@ import path from "path";
 
 import { CONFIG_PATH, PROCESSING_PATH } from "../../constants";
 import { getAppInstance } from "../helpers/app-instance";
+import { getBeetsConfigPath } from "../helpers/beets-config";
 import { logs } from "../processing/utils/logs";
 import { ContentType, ProcessingItemType } from "../types";
 
@@ -161,13 +162,14 @@ export function classifyImportPaths(
 
 function spawnBeet(
   itemId: string,
+  configPath: string,
   command: string,
   additionalArgs: string[] = [],
 ): Promise<void> {
   const binary = "beet";
   const args = [
     "-c",
-    `${CONFIG_PATH}/beets-config.yml`,
+    configPath,
     "-l",
     `${CONFIG_PATH}/beets/beets-library.blb`,
     command,
@@ -219,6 +221,8 @@ export async function beets(id: string): Promise<void> {
   try {
     // BEETS
     if (process.env.ENABLE_BEETS === "true") {
+      const configPath = getBeetsConfigPath();
+
       logs(item.id, "🕖 [BEETS] Running ...", { skipConsole: true });
       console.log("--------------------");
       console.log("🎧 BEETS             ");
@@ -233,13 +237,16 @@ export async function beets(id: string): Promise<void> {
 
       if (albums.length === 0 && singletons.length === 0) {
         // Nothing recognisable - let beets walk the folder itself
-        await spawnBeet(item.id, "import", ["-qC", itemProcessingPath]);
+        await spawnBeet(item.id, configPath, "import", [
+          "-qC",
+          itemProcessingPath,
+        ]);
       } else {
         if (albums.length > 0) {
           logs(item.id, `🎧 [BEETS] Importing ${albums.length} album(s)`, {
             skipConsole: true,
           });
-          await spawnBeet(item.id, "import", ["-qC", ...albums]);
+          await spawnBeet(item.id, configPath, "import", ["-qC", ...albums]);
         }
 
         if (singletons.length > 0) {
@@ -248,7 +255,11 @@ export async function beets(id: string): Promise<void> {
             `🎧 [BEETS] Importing ${singletons.length} folder(s) as singletons`,
             { skipConsole: true },
           );
-          await spawnBeet(item.id, "import", ["-qC", "-s", ...singletons]);
+          await spawnBeet(item.id, configPath, "import", [
+            "-qC",
+            "-s",
+            ...singletons,
+          ]);
         }
       }
 
@@ -258,7 +269,7 @@ export async function beets(id: string): Promise<void> {
       console.log("🏷️  BEETS WRITE      ");
       console.log("--------------------");
 
-      await spawnBeet(item.id, "write", [itemProcessingPath]);
+      await spawnBeet(item.id, configPath, "write", [itemProcessingPath]);
     }
   } catch (err: unknown) {
     logs(
